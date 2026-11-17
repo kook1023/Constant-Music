@@ -12,6 +12,19 @@ jobs:
       - name: Check out
         uses: actions/checkout@v4
 
+      # Works whether the mod files are at the repo root or inside a ConstantMusic/ folder.
+      - name: Locate the project
+        id: proj
+        run: |
+          if [ -f gradlew ]; then
+            echo "dir=." >> "$GITHUB_OUTPUT"
+          elif [ -f ConstantMusic/gradlew ]; then
+            echo "dir=ConstantMusic" >> "$GITHUB_OUTPUT"
+          else
+            echo "Could not find gradlew at the repo root or in ConstantMusic/" >&2
+            exit 1
+          fi
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -21,14 +34,16 @@ jobs:
 
       # Files uploaded through the GitHub website can lose their executable bit.
       - name: Make gradlew executable
+        working-directory: ${{ steps.proj.outputs.dir }}
         run: chmod +x gradlew
 
       - name: Build
+        working-directory: ${{ steps.proj.outputs.dir }}
         run: ./gradlew build --no-daemon
 
       - name: Upload the mod jar
         uses: actions/upload-artifact@v4
         with:
           name: constantmusic-jar
-          path: build/libs/*.jar
+          path: ${{ steps.proj.outputs.dir }}/build/libs/*.jar
           if-no-files-found: error
